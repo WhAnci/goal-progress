@@ -7,11 +7,10 @@
   <style>
     :root {
       color-scheme: light dark;
-      /* Notion 임베드를 위해 배경 및 패널 투명화 */
+      
+      /* Light Mode Colors (기본) */
       --bg: transparent;
       --panel: transparent;
-      
-      /* Light Mode Colors (Default) */
       --text: #24292f;
       --muted: #57606a;
       --track: #d8dee4;
@@ -19,17 +18,24 @@
       --accent-dark: #0969da;
       --success: #1a7f37;
       --thumb-border: #ffffff;
+      --hover-bg: rgba(0, 0, 0, 0.05);
     }
 
     /* Dark Mode Colors */
     html.dark-theme {
-      --text: #c9d1d9;
+      /* 다크모드 시 배경을 어둡게 (노션 다크모드 배경색) */
+      --bg: #191919;
+      --panel: #191919;
+      
+      /* 글씨는 밝게 */
+      --text: #c9d1d9; 
       --muted: #8b949e;
       --track: #30363d;
       --accent: #2f81f7;
       --accent-dark: #2f81f7;
       --success: #238636;
-      --thumb-border: #0d1117;
+      --thumb-border: #191919;
+      --hover-bg: rgba(255, 255, 255, 0.1);
     }
 
     * {
@@ -68,7 +74,7 @@
     h1 {
       margin: 0 0 16px;
       color: var(--text);
-      font-size: clamp(18px, 5vw, 28px); /* 크기에 맞게 자동 조절 */
+      font-size: clamp(18px, 5vw, 28px);
       font-weight: 600;
       line-height: 1.25;
       overflow-wrap: anywhere;
@@ -171,12 +177,27 @@
     }
 
     .value {
-      margin: 8px 0 0;
+      display: inline-block;
+      margin: 8px auto 0;
+      padding: 4px 12px;
       color: var(--muted);
       font-size: clamp(14px, 4vw, 20px);
       font-weight: 600;
       line-height: 1.2;
       text-align: center;
+      border-radius: 6px;
+      cursor: text;
+      transition: background-color 0.2s, outline 0.2s;
+      outline: 2px solid transparent;
+    }
+
+    .value:hover {
+      background-color: var(--hover-bg);
+    }
+
+    .value:focus {
+      outline: 2px solid var(--accent);
+      background-color: transparent;
     }
   </style>
 </head>
@@ -202,7 +223,7 @@
         <div id="thumb" class="thumb"></div>
       </div>
     </div>
-    <p id="value" class="value">0%</p>
+    <p id="value" class="value" contenteditable="true" title="클릭해서 진행도 수정"></p>
   </main>
 
   <script>
@@ -262,6 +283,7 @@
       wasComplete = isComplete;
     }
 
+    // 게이지바 클릭 및 드래그 이벤트
     function progressFromPointer(event) {
       const rect = progressEl.querySelector(".track").getBoundingClientRect();
       const ratio = (event.clientX - rect.left) / rect.width;
@@ -280,30 +302,32 @@
     });
 
     progressEl.addEventListener("keydown", (event) => {
-      const keys = {
-        ArrowLeft: -1,
-        ArrowDown: -1,
-        ArrowRight: 1,
-        ArrowUp: 1,
-        PageDown: -10,
-        PageUp: 10,
-      };
+      const keys = { ArrowLeft: -1, ArrowDown: -1, ArrowRight: 1, ArrowUp: 1, PageDown: -10, PageUp: 10 };
+      if (event.key === "Home") { event.preventDefault(); updateProgress(0); return; }
+      if (event.key === "End") { event.preventDefault(); updateProgress(100); return; }
+      if (event.key in keys) { event.preventDefault(); updateProgress(progress + keys[event.key]); }
+    });
 
-      if (event.key === "Home") {
-        event.preventDefault();
-        updateProgress(0);
-        return;
+    // 텍스트(진행도) 직접 클릭해서 수정하는 이벤트
+    valueEl.addEventListener("focus", () => {
+      // 수정하기 편하게 숫자만 남김
+      valueEl.textContent = progress;
+    });
+
+    valueEl.addEventListener("blur", () => {
+      // 포커스를 잃으면 입력된 값을 숫자로 바꿔서 적용 (숫자가 아니면 기존값 유지)
+      let newValue = Number.parseInt(valueEl.textContent, 10);
+      if (Number.isNaN(newValue)) {
+        newValue = progress;
       }
+      updateProgress(newValue);
+    });
 
-      if (event.key === "End") {
+    valueEl.addEventListener("keydown", (event) => {
+      // 엔터 키 누르면 줄바꿈 방지하고 적용(blur)시킴
+      if (event.key === "Enter") {
         event.preventDefault();
-        updateProgress(100);
-        return;
-      }
-
-      if (event.key in keys) {
-        event.preventDefault();
-        updateProgress(progress + keys[event.key]);
+        valueEl.blur();
       }
     });
   </script>
